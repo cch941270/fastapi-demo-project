@@ -16,7 +16,7 @@ async def test_create_user_wrong_password(async_client):
     data.update({"confirm_password": "user2pw"})
     response = await async_client.post("/user/create/", data=data)
     assert response.status_code == 422
-    assert response.json() == {"detail": "Two passwords are not the same."}
+    assert response.json() == {"detail": "Two passwords are not the same"}
 
 @pytest.mark.asyncio
 async def test_create_user_duplicate_username(async_client):
