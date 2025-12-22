@@ -10,22 +10,121 @@ from app.db import (
     get_async_session,
     dispose_async_engine,
 )
-from app.models import User
+from app.models import Thread, User
 
 from contextlib import asynccontextmanager
-from datetime import timedelta
+from datetime import datetime, timedelta, UTC
 from fastapi import Depends, FastAPI, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, col
 from typing import Annotated
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     yield
     await dispose_async_engine()
 
+
 app = FastAPI(lifespan=lifespan)
+
+
+async def get_thread(
+    thread_id: int, session: AsyncSession = Depends(get_async_session)
+):
+    statement = select(Thread).where(Thread.id == thread_id)
+    results = await session.execute(statement)
+    thread = results.scalar()
+    if thread is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found"
+        )
+    return thread
+
+
+@app.get("/threads/")
+async def list_threads(
+    search_title: str | None = None, session: AsyncSession = Depends(get_async_session)
+):
+    if search_title is None:
+        statement = select(Thread)
+    else:
+        statement = select(Thread).where(col(Thread.title).contains(search_title))
+    results = await session.execute(statement)
+    threads = results.scalars().all()
+    return threads
+
+
+@app.post("/threads/create/")
+async def create_thread(
+    title: Annotated[str, Form()],
+    content: Annotated[str, Form()],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        new_thread = Thread(user_id=current_user.id, title=title, content=content)
+        session.add(new_thread)
+        await session.commit()
+        return {"message": "New thread created"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
+        )
+
+
+@app.get("/threads/{thread_id}")
+async def read_thread(
+    thread_id: int, session: AsyncSession = Depends(get_async_session)
+):
+    thread = await get_thread(thread_id, session)
+    return thread
+
+
+@app.patch("/threads/{thread_id}")
+async def update_thread(
+    thread_id: int,
+    content: Annotated[str, Form()],
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    thread = await get_thread(thread_id, session)
+    if thread.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="This is not your thread."
+        )
+    try:
+        thread.content = content
+        thread.updated_at = datetime.now(UTC)
+        session.add(thread)
+        await session.commit()
+        return thread
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
+        )
+
+
+@app.delete("/threads/{thread_id}")
+async def delete_thread(
+    thread_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    thread = await get_thread(thread_id, session)
+    if thread.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="This is not your thread."
+        )
+    try:
+        await session.delete(thread)
+        await session.commit()
+        return {"message": "Thread deleted"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
+        )
 
 
 @app.get("/users/me", response_model=User)
@@ -68,11 +167,16 @@ async def create_user(
     session: AsyncSession = Depends(get_async_session),
 ):
     if password != confirm_password:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Two passwords are not the same.")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Two passwords are not the same.",
+        )
     try:
         new_user = User(username=username, hashed_password=hash_password(password))
         session.add(new_user)
         await session.commit()
         return {"message": "New user created"}
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
+        )
