@@ -7,7 +7,6 @@ from app.auth import (
     verify_password,
 )
 from app.db import (
-    begin_engine_and_create_tables,
     get_async_session,
     dispose_async_engine,
 )
@@ -23,7 +22,6 @@ from typing import Annotated
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await begin_engine_and_create_tables()
     yield
     await dispose_async_engine()
 

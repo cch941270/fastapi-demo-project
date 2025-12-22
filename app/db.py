@@ -16,11 +16,6 @@ async_engine = create_async_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
 async_session = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 
-async def begin_engine_and_create_tables():
-    async with async_engine.begin() as conn:
-        await conn.run_sync(SQLModel.metadata.create_all)
-
-
 async def dispose_async_engine():
     await async_engine.dispose()
 
