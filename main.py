@@ -12,8 +12,9 @@ from app.db import (
     dispose_async_engine,
 )
 from app.models import User
+
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, UTC
+from datetime import timedelta
 from fastapi import Depends, FastAPI, Form, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,11 +70,11 @@ async def create_user(
     session: AsyncSession = Depends(get_async_session),
 ):
     if password != confirm_password:
-        raise HTTPException(status_code=422, detail="Two passwords are not the same.")
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="Two passwords are not the same.")
     try:
         new_user = User(username=username, hashed_password=hash_password(password))
         session.add(new_user)
         await session.commit()
         return {"message": "New user created"}
     except Exception as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e))
