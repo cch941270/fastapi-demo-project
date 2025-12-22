@@ -74,7 +74,7 @@ async def create_thread(
         )
 
 
-@app.get("/threads/{thread_id}")
+@app.get("/threads/{thread_id}/")
 async def read_thread(
     thread_id: int, session: AsyncSession = Depends(get_async_session)
 ):
@@ -82,7 +82,7 @@ async def read_thread(
     return thread
 
 
-@app.patch("/threads/{thread_id}")
+@app.patch("/threads/{thread_id}/")
 async def update_thread(
     thread_id: int,
     content: Annotated[str, Form()],
@@ -106,7 +106,7 @@ async def update_thread(
         )
 
 
-@app.delete("/threads/{thread_id}")
+@app.delete("/threads/{thread_id}/")
 async def delete_thread(
     thread_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -125,11 +125,6 @@ async def delete_thread(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
         )
-
-
-@app.get("/users/me", response_model=User)
-async def read_user_me(current_user: Annotated[User, Depends(get_current_user)]):
-    return current_user
 
 
 @app.post("/token/")
@@ -180,3 +175,14 @@ async def create_user(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
         )
+
+
+@app.get("/user/threads/")
+async def my_threads(
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: AsyncSession = Depends(get_async_session),
+):
+    statement = select(Thread).where(Thread.user_id == current_user.id)
+    results = await session.execute(statement)
+    threads = results.scalars().all()
+    return threads
