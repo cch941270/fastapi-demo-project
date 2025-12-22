@@ -10,7 +10,7 @@ from app.db import (
     get_async_session,
     dispose_async_engine,
 )
-from app.models import Thread, User
+from app.models import DiscussionThread, User
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, UTC
@@ -30,97 +30,105 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-async def get_thread(
-    thread_id: int, session: AsyncSession = Depends(get_async_session)
+async def get_discussion_thread(
+    discussion_thread_id: int, session: AsyncSession = Depends(get_async_session)
 ):
-    statement = select(Thread).where(Thread.id == thread_id)
+    statement = select(DiscussionThread).where(
+        DiscussionThread.id == discussion_thread_id
+    )
     results = await session.execute(statement)
-    thread = results.scalar()
-    if thread is None:
+    discussion_thread = results.scalar()
+    if discussion_thread is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Thread not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Discussion thread not found"
         )
-    return thread
+    return discussion_thread
 
 
-@app.get("/threads/")
-async def list_threads(
+@app.get("/discussion_threads/")
+async def list_discussion_threads(
     search_title: str | None = None, session: AsyncSession = Depends(get_async_session)
 ):
     if search_title is None:
-        statement = select(Thread)
+        statement = select(DiscussionThread)
     else:
-        statement = select(Thread).where(col(Thread.title).contains(search_title))
+        statement = select(DiscussionThread).where(
+            col(DiscussionThread.title).contains(search_title)
+        )
     results = await session.execute(statement)
-    threads = results.scalars().all()
-    return threads
+    discussion_threads = results.scalars().all()
+    return discussion_threads
 
 
-@app.post("/threads/create/")
-async def create_thread(
+@app.post("/discussion_threads/create/")
+async def create_discussion_thread(
     title: Annotated[str, Form()],
     content: Annotated[str, Form()],
     current_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        new_thread = Thread(user_id=current_user.id, title=title, content=content)
-        session.add(new_thread)
+        new_discussion_thread = DiscussionThread(
+            user_id=current_user.id, title=title, content=content
+        )
+        session.add(new_discussion_thread)
         await session.commit()
-        return {"message": "New thread created"}
+        return {"message": "New discussion thread created"}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
         )
 
 
-@app.get("/threads/{thread_id}/")
-async def read_thread(
-    thread_id: int, session: AsyncSession = Depends(get_async_session)
+@app.get("/discussion_threads/{discussion_thread_id}/")
+async def read_discussion_thread(
+    discussion_thread_id: int, session: AsyncSession = Depends(get_async_session)
 ):
-    thread = await get_thread(thread_id, session)
-    return thread
+    discussion_thread = await get_discussion_thread(discussion_thread_id, session)
+    return discussion_thread
 
 
-@app.patch("/threads/{thread_id}/")
-async def update_thread(
-    thread_id: int,
+@app.patch("/discussion_threads/{discussion_thread_id}/")
+async def update_discussion_thread(
+    discussion_thread_id: int,
     content: Annotated[str, Form()],
     current_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    thread = await get_thread(thread_id, session)
-    if thread.user_id != current_user.id:
+    discussion_thread = await get_discussion_thread(discussion_thread_id, session)
+    if discussion_thread.user_id != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="This is not your thread."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This is not your discussion thread",
         )
     try:
-        thread.content = content
-        thread.updated_at = datetime.now(UTC)
-        session.add(thread)
+        discussion_thread.content = content
+        discussion_thread.updated_at = datetime.now(UTC)
+        session.add(discussion_thread)
         await session.commit()
-        return thread
+        return discussion_thread
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
         )
 
 
-@app.delete("/threads/{thread_id}/")
-async def delete_thread(
-    thread_id: int,
+@app.delete("/discussion_threads/{discussion_thread_id}/")
+async def delete_discussion_thread(
+    discussion_thread_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    thread = await get_thread(thread_id, session)
-    if thread.user_id != current_user.id:
+    discussion_thread = await get_discussion_thread(discussion_thread_id, session)
+    if discussion_thread.user_id != current_user.id:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="This is not your thread."
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This is not your discussion thread",
         )
     try:
-        await session.delete(thread)
+        await session.delete(discussion_thread)
         await session.commit()
-        return {"message": "Thread deleted"}
+        return {"message": "Discussion thread deleted"}
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)
@@ -164,7 +172,7 @@ async def create_user(
     if password != confirm_password:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail="Two passwords are not the same.",
+            detail="Two passwords are not the same",
         )
     try:
         new_user = User(username=username, hashed_password=hash_password(password))
@@ -177,12 +185,14 @@ async def create_user(
         )
 
 
-@app.get("/user/threads/")
-async def my_threads(
+@app.get("/user/discussion_threads/")
+async def my_discussion_threads(
     current_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    statement = select(Thread).where(Thread.user_id == current_user.id)
+    statement = select(DiscussionThread).where(
+        DiscussionThread.user_id == current_user.id
+    )
     results = await session.execute(statement)
-    threads = results.scalars().all()
-    return threads
+    discussion_threads = results.scalars().all()
+    return discussion_threads

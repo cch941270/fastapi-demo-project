@@ -18,8 +18,8 @@ class User(SQLModel, table=True):
     )
 
 
-class Thread(SQLModel, table=True):
-    __tablename__: str = "threads"
+class DiscussionThread(SQLModel, table=True):
+    __tablename__: str = "discussion_threads"
 
     id: int | None = Field(default=None, sa_column=Column(Integer, primary_key=True))
     user_id: uuid.UUID = Field(
