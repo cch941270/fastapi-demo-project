@@ -1,18 +1,21 @@
 import pytest
 
-def user_data():
+def new_user_data():
     return {"username": "user1", "password": "user1pw", "confirm_password": "user1pw"}
+
+def user_data():
+    return {"username": "testuser", "password": "testuserpw", "confirm_password": "testuserpw"}
 
 @pytest.mark.asyncio
 async def test_create_user(async_client):
-    data = user_data()
+    data = new_user_data()
     response = await async_client.post("/user/create/", data=data)
     assert response.status_code == 200
     assert response.json() == {"message": "New user created"}
 
 @pytest.mark.asyncio
 async def test_create_user_wrong_password(async_client):
-    data = user_data()
+    data = new_user_data()
     data.update({"confirm_password": "user2pw"})
     response = await async_client.post("/user/create/", data=data)
     assert response.status_code == 422
