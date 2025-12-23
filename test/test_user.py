@@ -23,3 +23,12 @@ async def test_create_user_duplicate_username(async_client):
     data = user_data()
     response = await async_client.post("/user/create/", data=data)
     assert response.status_code == 422
+
+@pytest.mark.asyncio
+async def test_login_for_access_token(async_client):
+    data = user_data()
+    del data["confirm_password"]
+    response = await async_client.post("/token/", data=data)
+    token = response.json().get("access_token")
+    assert response.status_code == 200
+    assert token is not None
