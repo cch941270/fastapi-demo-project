@@ -32,6 +32,27 @@ class DiscussionThread(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
     updated_at: datetime | None = Field(
-        default=None,
-        sa_column=Column(DateTime(timezone=True), nullable=True)
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+
+
+class DiscussionComment(SQLModel, table=True):
+    __tablename__: str = "discussion_comments"
+
+    id: int | None = Field(default=None, sa_column=Column(Integer, primary_key=True))
+    user_id: uuid.UUID = Field(
+        sa_column=Column(Uuid, ForeignKey("users.id"), index=True, nullable=False)
+    )
+    discussion_thread_id: int = Field(
+        sa_column=Column(
+            Integer, ForeignKey("discussion_threads.id"), index=True, nullable=False
+        )
+    )
+    content: str = Field(sa_column=Column(Text, nullable=False))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    deleted_at: datetime | None = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
