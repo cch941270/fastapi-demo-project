@@ -67,20 +67,18 @@ async def create_discussion_thread(
 
 @router.get("/{discussion_thread_id}/")
 async def read_discussion_thread(
-    discussion_thread_id: int, session: AsyncSession = Depends(get_async_session)
+    discussion_thread: DiscussionThread = Depends(get_discussion_thread),
 ):
-    discussion_thread = await get_discussion_thread(discussion_thread_id, session)
     return discussion_thread
 
 
 @router.patch("/{discussion_thread_id}/")
 async def update_discussion_thread(
-    discussion_thread_id: int,
     content: Annotated[str, Form()],
     current_user: Annotated[User, Depends(get_current_user)],
+    discussion_thread: DiscussionThread = Depends(get_discussion_thread),
     session: AsyncSession = Depends(get_async_session),
 ):
-    discussion_thread = await get_discussion_thread(discussion_thread_id, session)
     if discussion_thread.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -100,11 +98,10 @@ async def update_discussion_thread(
 
 @router.delete("/{discussion_thread_id}/")
 async def delete_discussion_thread(
-    discussion_thread_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
+    discussion_thread: DiscussionThread = Depends(get_discussion_thread),
     session: AsyncSession = Depends(get_async_session),
 ):
-    discussion_thread = await get_discussion_thread(discussion_thread_id, session)
     if discussion_thread.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
