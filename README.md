@@ -27,5 +27,5 @@ ALTER DATABASE fastapi_demo_project OWNER TO fastapi_demo_project_user;
 ```
 7. `alembic upgrade head` to migrate database
 8. `python -m pytest` to run tests
-9. `uvicorn main:app --reload --log-level info` to start development server
+9. `uvicorn app.main:app --reload --log-level info` to start development server
 10. visit localhost:8000/docs to try APIs
