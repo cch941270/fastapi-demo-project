@@ -1,7 +1,7 @@
 from app.auth import get_current_user
 from app.db import get_async_session
 from app.models import DiscussionThread, User
-from main import app
+from app.main import app
 
 import asyncpg
 from dotenv import dotenv_values
