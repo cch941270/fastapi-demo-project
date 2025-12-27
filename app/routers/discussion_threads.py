@@ -3,7 +3,7 @@ from app.db import get_async_session
 from app.models import DiscussionThread, User
 
 from datetime import datetime, UTC
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, col
 from typing import Annotated
@@ -32,7 +32,8 @@ async def get_discussion_thread(
 
 @router.get("/")
 async def list_discussion_threads(
-    search_title: str | None = None, session: AsyncSession = Depends(get_async_session)
+    search_title: Annotated[str | None, Query(max_length=20)] = None,
+    session: AsyncSession = Depends(get_async_session)
 ):
     if search_title is None:
         statement = select(DiscussionThread)
