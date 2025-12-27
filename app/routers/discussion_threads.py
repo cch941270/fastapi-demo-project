@@ -4,7 +4,17 @@ from app.models import DiscussionThread, User
 
 from datetime import datetime, UTC
 from dotenv import dotenv_values
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, status, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    Form,
+    HTTPException,
+    Query,
+    status,
+    UploadFile
+)
+import os
 import re
 import shutil
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +28,16 @@ router = APIRouter(
     tags=["discussion_threads"],
 )
 
+
+def remove_image(image_path: str):
+    relative_image_path = f".{image_path}"
+    if os.path.exists(relative_image_path):
+        try:
+            os.remove(relative_image_path)
+        except OSError as e:
+            print(f"{relative_image_path} cannot be removed", str(e))
+    else:
+        print(f"Trying to remove {relative_image_path}, but path not found")
 
 def is_image(image: UploadFile | None) -> TypeGuard[UploadFile]:
     if image is None:
@@ -144,6 +164,7 @@ async def update_discussion_thread(
 
 @router.delete("/{discussion_thread_id}/")
 async def delete_discussion_thread(
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_current_user)],
     discussion_thread: DiscussionThread = Depends(get_discussion_thread),
     session: AsyncSession = Depends(get_async_session),
@@ -156,6 +177,9 @@ async def delete_discussion_thread(
     try:
         await session.delete(discussion_thread)
         await session.commit()
+        image_path = discussion_thread.image_path
+        if image_path:
+            background_tasks.add_task(remove_image, image_path)
         return {"message": "Discussion thread deleted"}
     except Exception as e:
         raise HTTPException(
