@@ -15,9 +15,11 @@ from .routers import discussion_threads
 
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from dotenv import dotenv_values
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 import time
@@ -41,6 +43,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+config = dotenv_values(".env")
+image_path = config.get("IMAGE_PATH") or "/static"
+app.mount(image_path, StaticFiles(directory="static"), name="static")
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
