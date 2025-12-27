@@ -27,6 +27,7 @@ class DiscussionThread(SQLModel, table=True):
     )
     title: str = Field(sa_column=Column(String(200), index=True, nullable=False))
     content: str = Field(sa_column=Column(Text, nullable=False))
+    image_path: str | None = Field(sa_column=Column(String(300), nullable=True))
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC),
         sa_column=Column(DateTime(timezone=True), nullable=False),
