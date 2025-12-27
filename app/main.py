@@ -15,10 +15,11 @@ from .routers import discussion_threads
 
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from fastapi import Depends, FastAPI, Form, HTTPException, status
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+import time
 from typing import Annotated
 
 
@@ -31,6 +32,14 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 app.include_router(discussion_threads.router)
 
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    end_time = time.perf_counter()
+    process_time = f"{(end_time - start_time) * 1000}ms"
+    response.headers["X-Process-Time"] = process_time
+    return response
 
 @app.post("/token/")
 async def login_for_access_token(
