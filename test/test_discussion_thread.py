@@ -11,7 +11,8 @@ async def test_create_thread(async_client):
     data = {"title": f"newtitle", "content": f"newcontent"}
     response = await async_client.post("/discussion_threads/create/", data=data)
     assert response.status_code == 200
-    assert response.json() == {"message": "New discussion thread created"}
+    assert response.json().get("title") == data.get("title")
+    assert response.json().get("content") == data.get("content")
 
 @pytest.mark.asyncio
 async def test_get_thread(async_client, mock_discussion_thread):
