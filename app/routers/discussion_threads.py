@@ -3,10 +3,14 @@ from app.db import get_async_session
 from app.models import DiscussionThread, User
 
 from datetime import datetime, UTC
-from fastapi import APIRouter, Depends, Form, HTTPException, Query, status
+from dotenv import dotenv_values
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, status, UploadFile
+import re
+import shutil
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, col
-from typing import Annotated
+from time import time
+from typing import Annotated, TypeGuard
 
 
 router = APIRouter(
@@ -14,6 +18,39 @@ router = APIRouter(
     tags=["discussion_threads"],
 )
 
+
+def is_image(image: UploadFile | None) -> TypeGuard[UploadFile]:
+    if image is None:
+        return False
+    if image.content_type and re.match("image/.+", image.content_type) is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Uploaded file is not an image"
+        )
+    return True
+
+async def save_image(image: UploadFile, username: str, title: str) -> str:
+    file_extension_search = image.filename and re.search(r"\..+$", image.filename)
+    if not file_extension_search:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Uploaded file is not an image"
+        )
+    config = dotenv_values(".env")
+    image_path = "{}/{}_{}_{}{}".format(
+        config.get("IMAGE_PATH"),
+        int(time()),
+        username,
+        title,
+        file_extension_search.group()
+    )
+    try:
+        with open(f".{image_path}", "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+            return image_path
+    except IOError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e))
 
 async def get_discussion_thread(
     discussion_thread_id: int, session: AsyncSession = Depends(get_async_session)
@@ -52,14 +89,22 @@ async def create_discussion_thread(
     content: Annotated[str, Form()],
     current_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
+    image: UploadFile | None = None,
 ):
+    if is_image(image):
+        image_path = await save_image(image, current_user.username, title)
+    else:
+        image_path = None
     try:
         new_discussion_thread = DiscussionThread(
-            user_id=current_user.id, title=title, content=content
+            user_id=current_user.id,
+            title=title,
+            content=content,
+            image_path=image_path,
         )
         session.add(new_discussion_thread)
         await session.commit()
-        return {"message": "New discussion thread created"}
+        return new_discussion_thread
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(e)

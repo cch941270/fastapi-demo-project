@@ -46,7 +46,7 @@ app.add_middleware(
 
 config = dotenv_values(".env")
 image_path = config.get("IMAGE_PATH") or "/static"
-app.mount(image_path, StaticFiles(directory="static"), name="static")
+app.mount(image_path, StaticFiles(directory="static/images"), name="discussion_thread_images")
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
