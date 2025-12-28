@@ -28,6 +28,30 @@ router = APIRouter(
     tags=["discussion_threads"],
 )
 
+def to_camel_case(snake_case: str) -> str:
+    return re.sub(r'_([a-z])', lambda match: match.group(1).upper(),snake_case)
+
+def transform_keys_camel_case(discussion_threads) -> list:
+    lst = []
+    for discussion_thread in discussion_threads:
+        lst.append({
+            to_camel_case(key): value for (key, value) in discussion_thread.items()
+        })
+    return lst
+
+def substitute_user_id_username(query_results) -> list:
+    lst = []
+    for (discussion_thread, user) in query_results:
+        discussion_thread_dict = vars(discussion_thread)
+        del discussion_thread_dict["user_id"]
+        del discussion_thread_dict["_sa_instance_state"]
+        discussion_thread_dict.update({"user": user.username})
+        lst.append(discussion_thread_dict)
+    return lst
+
+def format_discussion_threads(query_results) -> list:
+    substituted_list = substitute_user_id_username(query_results)
+    return transform_keys_camel_case(substituted_list)
 
 def remove_image(image_path: str):
     relative_image_path = f".{image_path}"
@@ -93,14 +117,16 @@ async def list_discussion_threads(
     session: AsyncSession = Depends(get_async_session)
 ):
     if search_title is None:
-        statement = select(DiscussionThread)
+        statement = select(DiscussionThread, User) \
+            .where(DiscussionThread.user_id == User.id) \
+            .order_by(col(DiscussionThread.created_at).desc())
     else:
-        statement = select(DiscussionThread).where(
-            col(DiscussionThread.title).contains(search_title)
-        )
+        statement = select(DiscussionThread, User) \
+            .where(DiscussionThread.user_id == User.id) \
+            .where(col(DiscussionThread.title).contains(search_title)) \
+            .order_by(col(DiscussionThread.created_at).desc())
     results = await session.execute(statement)
-    discussion_threads = results.scalars().all()
-    return discussion_threads
+    return format_discussion_threads(results)
 
 
 @router.post("/create/")
