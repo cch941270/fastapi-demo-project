@@ -45,7 +45,7 @@ def substitute_user_id_username(query_results) -> list:
         discussion_thread_dict = vars(discussion_thread)
         del discussion_thread_dict["user_id"]
         del discussion_thread_dict["_sa_instance_state"]
-        discussion_thread_dict.update({"user": user.username})
+        discussion_thread_dict.update({"author": user.username})
         lst.append(discussion_thread_dict)
     return lst
 
