@@ -21,7 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 import time
 from typing import Annotated
 
@@ -112,9 +112,9 @@ async def my_discussion_threads(
     current_user: Annotated[User, Depends(get_current_user)],
     session: AsyncSession = Depends(get_async_session),
 ):
-    statement = select(DiscussionThread).where(
-        DiscussionThread.user_id == current_user.id
-    )
+    statement = select(DiscussionThread, User) \
+        .where(DiscussionThread.user_id == User.id) \
+        .where(DiscussionThread.user_id == current_user.id) \
+        .order_by(col(DiscussionThread.created_at).desc())
     results = await session.execute(statement)
-    discussion_threads = results.scalars().all()
-    return discussion_threads
+    return discussion_threads.format_discussion_threads(results)
